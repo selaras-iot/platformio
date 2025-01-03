@@ -1,10 +1,45 @@
+// #include <ESP8266WiFi.h>
+// #include <NeoPixelBus.h>
+// #include <WS2812FX.h>
+
+// #define LED_PIN
+//   3  // digital pin used to drive the LED strip, (for ESP8266 DMA, must use
+//      // GPIO3/RX/D9)
+// #define LED_COUNT 44  // number of LEDs on the strip
+
+// WS2812FX ws2812fx = WS2812FX(LED_COUNT, LED_PIN, NEO_GRB + NEO_KHZ800);
+
+// // create a NeoPixelBus instance
+// NeoPixelBus<NeoGrbFeature, NeoEsp8266Dma800KbpsMethod> strip(LED_COUNT);
+
+// void setup() {
+//   Serial.begin(115200);
+
+//   ws2812fx.init();
+
+//   // MUST run strip.Begin() after ws2812fx.init(), so GPIO3 is initalized
+//   // properly
+//   strip.Begin();
+//   strip.Show();
+
+//   // set the custom show function
+
+//   ws2812fx.start();
+// }
+
+// void loop() { ws2812fx.service(); }
+
 #if defined(ESP8266)
 #include <ESP8266WiFi.h>
 #include <ESPAsyncTCP.h>
+#elif defined(ESP32)
+#include <AsyncTCP.h>
+#include <WiFi.h>
 #endif
 
 #include <Arduino.h>
 #include <ESPAsyncWebServer.h>
+#include <NeoPixelBus.h>
 #include <PubSubClient.h>
 #include <WS2812FX.h>
 #include <WebSerial.h>
@@ -13,16 +48,54 @@
 AsyncWebServer server(80);
 WiFiClient wifiClient;
 PubSubClient client(wifiClient);
-WS2812FX ws2812fx = WS2812FX(44, 5, NEO_GRB + NEO_KHZ800);
+WS2812FX ws2812fx = WS2812FX(44, 3, NEO_GRB + NEO_KHZ800);
+NeoPixelBus<NeoGrbFeature, NeoEsp8266Dma800KbpsMethod> strip(44);
+
+// topics
+String subTopicMode = "", subTopicBrightness = "";
+
+void myCustomShow(void) {
+  if (strip.CanShow()) {
+    // copy the WS2812FX pixel data to the NeoPixelBus instance
+    memcpy(strip.Pixels(), ws2812fx.getPixels(), strip.PixelsSize());
+    strip.Dirty();
+    strip.Show();
+  }
+}
 
 void callback(char* topic, byte* payload, unsigned int length) {
-  WebSerial.print("Message arrived [");
-  WebSerial.print(topic);
-  WebSerial.print("] ");
-  for (int i = 0; i < length; i++) {
-    WebSerial.print((char)payload[i]);
+  String strTopic = String(topic);
+  String strPayload = "";
+
+  for (unsigned int a = 0; a < length; a++) strPayload += (char)payload[a];
+
+  WebSerial.printf("Message arrived [%s] %s\n", strTopic.c_str(),
+                   strPayload.c_str());
+
+  if (strTopic == subTopicMode) {
+    WebSerial.printf("Change mode to %s\n", strPayload.c_str());
+    int newMode = strPayload.toInt();
+    if (ws2812fx.getMode() != newMode) {
+      ws2812fx.setMode(newMode);
+      // const uint32_t colors[] = {RED, BLACK, BLACK};
+      // ws2812fx.setSegment(0, 0, 44 - 1, newMode, colors, 2000, NO_OPTIONS);
+    }
   }
-  WebSerial.println();
+
+  if (strTopic == subTopicBrightness) {
+    WebSerial.printf("Change brightness to %s\n", strPayload.c_str());
+    int newBrightness = strPayload.toInt();
+    if (ws2812fx.getBrightness() != newBrightness)
+      ws2812fx.setBrightness(newBrightness);
+  }
+
+  // WebSerial.print("Message arrived [");
+  // WebSerial.print(topic);
+  // WebSerial.print("] ");
+  // for (int i = 0; i < length; i++) {
+  //   WebSerial.print((char)payload[i]);
+  // }
+  // WebSerial.println();
   // if (strcmp(topic,
   //            ("com.rizalanggoro.selaras/" + String(DEVICE_UUID) + "/mode")
   //                .c_str()) == 0) {
@@ -30,7 +103,8 @@ void callback(char* topic, byte* payload, unsigned int length) {
   //   ws2812fx.setMode(mode);
   //   WebSerial.print("mode: ");
   //   WebSerial.println(mode);
-  // } else if (strcmp(topic, ("com.rizalanggoro.selaras/" + String(DEVICE_UUID)
+  // } else if (strcmp(topic, ("com.rizalanggoro.selaras/" +
+  // String(DEVICE_UUID)
   // +
   //                           "/brightness")
   //                              .c_str()) == 0) {
@@ -48,11 +122,8 @@ boolean reconnect() {
   WebSerial.println(clientId);
 
   if (client.connect(clientId.c_str())) {
-    client.subscribe(
-        ("com.rizalanggoro.selaras/" + String(DEVICE_UUID) + "/mode").c_str());
-    client.subscribe(
-        ("com.rizalanggoro.selaras/" + String(DEVICE_UUID) + "/brightness")
-            .c_str());
+    client.subscribe(subTopicMode.c_str());
+    client.subscribe(subTopicBrightness.c_str());
   }
 
   return client.connected();
@@ -71,8 +142,27 @@ boolean reconnect() {
 //   }
 // }
 
+void initializeTopics() {
+  String org = "com.rizalanggoro.selaras";
+  String prefix = org + "/" + DEVICE_UUID + "/";
+
+  subTopicMode = prefix + "mode";
+  subTopicBrightness = prefix + "brightness";
+}
+
 void setup() {
   Serial.begin(115200);
+
+  ws2812fx.init();
+  strip.Begin();
+  strip.Show();
+
+  // harus ada ini
+  ws2812fx.setCustomShow(myCustomShow);
+
+  // ws2812fx.setBrightness(255);
+  // const uint32_t colors[] = {RED, BLACK, BLACK};
+  // ws2812fx.setSegment(0, 0, 44 - 1, FX_MODE_COMET, colors, 2000, NO_OPTIONS);
 
   // connect to wifi
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
@@ -100,11 +190,11 @@ void setup() {
   server.begin();
 
   WebSerial.println("Connecting to MQTT broker...");
+  initializeTopics();
   client.setServer(MQTT_BROKER, 1883);
   client.setCallback(callback);
 
-  ws2812fx.init();
-  ws2812fx.setBrightness(1);
+  ws2812fx.setBrightness(100);
   ws2812fx.setSpeed(1000);
   ws2812fx.setMode(FX_MODE_STATIC);
   ws2812fx.start();
