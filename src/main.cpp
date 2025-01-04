@@ -29,14 +29,6 @@ LEDIndicator ledIndicator;
 MQTT mqtt;
 
 boolean isConfigurationModeEnabled = false;
-void onEnterConfigurationMode() {
-  Serial.println("ESP entering configuration mode!!");
-  isConfigurationModeEnabled = true;
-
-  ledIndicator.turnOn(250);
-}
-
-void onConnected() { Serial.println("Network connected!"); }
 
 void setup() {
   Serial.begin(115200);
@@ -65,10 +57,14 @@ void setup() {
   neoPixelBus->Begin();
   neoPixelBus->Show();
 
-  resetDetector.begin(&fileSystem, onEnterConfigurationMode);
+  resetDetector.begin(&fileSystem, []() {
+    Serial.println("ESP entering configuration mode!!");
+    isConfigurationModeEnabled = true;
+    ledIndicator.turnOn(250);
+  });
   network.begin(&fileSystem,
                 isConfigurationModeEnabled ? NetworkMode::AP : NetworkMode::STA,
-                onConnected);
+                []() { Serial.println("Network connected!"); });
 
   // initialize custom show
   ws2812fx->setCustomShow([]() {
@@ -82,9 +78,9 @@ void setup() {
   });
 
   // initialize default config for ws2812
-  ws2812fx->setBrightness(100);
   ws2812fx->setSpeed(1000);
   ws2812fx->setMode(FX_MODE_STATIC);
+  ws2812fx->setBrightness(100);
   ws2812fx->start();
 
   // Serve a simple webpage
@@ -106,7 +102,22 @@ void setup() {
           ledIndicator.turnOff();
       },
       [](MQTT_TOPIC topic, String payload) {
-        Serial.printf("MQTT message received: %s\n", payload.c_str());
+        if (topic == MQTT_TOPIC::MODE) {
+          int newMode = payload.toInt();
+          if (ws2812fx->getMode() != newMode) {
+            ws2812fx->setMode(newMode);
+          }
+        } else if (topic == MQTT_TOPIC::BRIGHTNESS) {
+          int newBrightness = payload.toInt() + 1;
+          if (ws2812fx->getBrightness() != newBrightness) {
+            ws2812fx->setBrightness(newBrightness);
+          }
+        } else if (topic == MQTT_TOPIC::SPEED) {
+          int newSpeed = payload.toInt();
+          if (ws2812fx->getSpeed() != newSpeed) {
+            ws2812fx->setSpeed(newSpeed);
+          }
+        }
       });
 }
 
