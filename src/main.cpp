@@ -21,24 +21,17 @@
 AsyncWebServer server(80);
 WiFiClient wifiClient;
 PubSubClient client(wifiClient);
-WS2812FX ws2812fx = WS2812FX(44, 3, NEO_GRB + NEO_KHZ800);
-NeoPixelBus strip = NeoPixelBus<NeoGrbFeature, NeoEsp8266Dma800KbpsMethod>(44);
+
 FileSystem fileSystem;
 ResetDetector resetDetector;
 Network network;
 LEDIndicator ledIndicator;
 
+WS2812FX* ws2812fx;
+NeoPixelBus<NeoGrbFeature, NeoEsp8266Dma800KbpsMethod>* neoPixelBus;
+
 // topics
 String subTopicMode = "", subTopicBrightness = "";
-
-void myCustomShow(void) {
-  if (strip.CanShow()) {
-    // copy the WS2812FX pixel data to the NeoPixelBus instance
-    memcpy(strip.Pixels(), ws2812fx.getPixels(), strip.PixelsSize());
-    strip.Dirty();
-    strip.Show();
-  }
-}
 
 void callback(char* topic, byte* payload, unsigned int length) {
   String strTopic = String(topic);
@@ -50,20 +43,21 @@ void callback(char* topic, byte* payload, unsigned int length) {
                    strPayload.c_str());
 
   if (strTopic == subTopicMode) {
-    WebSerial.printf("Change mode to %s\n", strPayload.c_str());
-    int newMode = strPayload.toInt();
-    if (ws2812fx.getMode() != newMode) {
-      ws2812fx.setMode(newMode);
-      // const uint32_t colors[] = {RED, BLACK, BLACK};
-      // ws2812fx.setSegment(0, 0, 44 - 1, newMode, colors, 2000, NO_OPTIONS);
-    }
+    // WebSerial.printf("Change mode to %s\n", strPayload.c_str());
+    // int newMode = strPayload.toInt();
+    // if (ws2812fx.getMode() != newMode) {
+    //   ws2812fx.setMode(newMode);
+    //   // const uint32_t colors[] = {RED, BLACK, BLACK};
+    //   // ws2812fx.setSegment(0, 0, 44 - 1, newMode, colors, 2000,
+    //   NO_OPTIONS);
+    // }
   }
 
   if (strTopic == subTopicBrightness) {
-    WebSerial.printf("Change brightness to %s\n", strPayload.c_str());
-    int newBrightness = strPayload.toInt();
-    if (ws2812fx.getBrightness() != newBrightness)
-      ws2812fx.setBrightness(newBrightness);
+    // WebSerial.printf("Change brightness to %s\n", strPayload.c_str());
+    // int newBrightness = strPayload.toInt();
+    // if (ws2812fx.getBrightness() != newBrightness)
+    //   ws2812fx.setBrightness(newBrightness);
   }
 
   // WebSerial.print("Message arrived [");
@@ -106,19 +100,6 @@ boolean reconnect() {
   return client.connected();
 }
 
-// void reconnect2() {
-//   while (!client.connected()) {
-//     if (client.connect(clientId.c_str())) {
-//       Serial.println("connected");
-//       // client.publish("rdaOutTopic", "hello world");
-
-//     } else {
-
-//       delay(5000);
-//     }
-//   }
-// }
-
 void initializeTopics() {
   String org = "com.rizalanggoro.selaras";
   String prefix = org + "/" + DEVICE_UUID + "/";
@@ -156,16 +137,34 @@ void setup() {
                 isConfigurationModeEnabled ? NetworkMode::AP : NetworkMode::STA,
                 onConnected);
 
-  ws2812fx.init();
-  strip.Begin();
-  strip.Show();
+  // initialize led strip
+  int ledCount = 10;
+  int ledPin = 3;
 
-  // harus ada ini
-  ws2812fx.setCustomShow(myCustomShow);
+  ws2812fx = new WS2812FX(ledCount, ledPin, NEO_GRB + NEO_KHZ800);
+  neoPixelBus =
+      new NeoPixelBus<NeoGrbFeature, NeoEsp8266Dma800KbpsMethod>(ledCount);
 
-  // ws2812fx.setBrightness(255);
-  // const uint32_t colors[] = {RED, BLACK, BLACK};
-  // ws2812fx.setSegment(0, 0, 44 - 1, FX_MODE_COMET, colors, 2000, NO_OPTIONS);
+  ws2812fx->init();
+  neoPixelBus->Begin();
+  neoPixelBus->Show();
+
+  // initialize custom show
+  ws2812fx->setCustomShow([]() {
+    if (neoPixelBus->CanShow()) {
+      // copy the WS2812FX pixel data to the NeoPixelBus instance
+      memcpy(neoPixelBus->Pixels(), ws2812fx->getPixels(),
+             neoPixelBus->PixelsSize());
+      neoPixelBus->Dirty();
+      neoPixelBus->Show();
+    }
+  });
+
+  // initialize default config for ws2812
+  ws2812fx->setBrightness(100);
+  ws2812fx->setSpeed(1000);
+  ws2812fx->setMode(FX_MODE_STATIC);
+  ws2812fx->start();
 
   randomSeed(micros());
 
@@ -185,11 +184,6 @@ void setup() {
   initializeTopics();
   client.setServer(MQTT_BROKER, 1883);
   client.setCallback(callback);
-
-  ws2812fx.setBrightness(100);
-  ws2812fx.setSpeed(1000);
-  ws2812fx.setMode(FX_MODE_STATIC);
-  ws2812fx.start();
 }
 
 // int value = 0;
@@ -203,7 +197,7 @@ unsigned long previousMillisConfigModeIndicator = 0;
 
 void loop() {
   if (!isConfigurationModeEnabled) {
-    // hanya dieksekusi ketika di mode normal
+    // only executed on normal mode
     if (!client.connected()) {
       unsigned long currentMillis = millis();
       if (currentMillis - lastReconnectAttempt > 5000) {
@@ -222,7 +216,7 @@ void loop() {
       client.loop();
     }
 
-    ws2812fx.service();
+    ws2812fx->service();
     resetDetector.loop();
   }
 
