@@ -1,34 +1,3 @@
-// #include <ESP8266WiFi.h>
-// #include <NeoPixelBus.h>
-// #include <WS2812FX.h>
-
-// #define LED_PIN
-//   3  // digital pin used to drive the LED strip, (for ESP8266 DMA, must use
-//      // GPIO3/RX/D9)
-// #define LED_COUNT 44  // number of LEDs on the strip
-
-// WS2812FX ws2812fx = WS2812FX(LED_COUNT, LED_PIN, NEO_GRB + NEO_KHZ800);
-
-// // create a NeoPixelBus instance
-// NeoPixelBus<NeoGrbFeature, NeoEsp8266Dma800KbpsMethod> strip(LED_COUNT);
-
-// void setup() {
-//   Serial.begin(115200);
-
-//   ws2812fx.init();
-
-//   // MUST run strip.Begin() after ws2812fx.init(), so GPIO3 is initalized
-//   // properly
-//   strip.Begin();
-//   strip.Show();
-
-//   // set the custom show function
-
-//   ws2812fx.start();
-// }
-
-// void loop() { ws2812fx.service(); }
-
 #if defined(ESP8266)
 #include <ESP8266WiFi.h>
 #include <ESPAsyncTCP.h>
