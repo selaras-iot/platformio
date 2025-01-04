@@ -124,8 +124,10 @@ void initializeTopics() {
   subTopicBrightness = prefix + "brightness";
 }
 
+boolean isConfigurationModeEnabled = false;
 void onEnterConfigurationMode() {
   Serial.println("ESP entering configuration mode!!");
+  isConfigurationModeEnabled = true;
 }
 
 Network network;
@@ -136,6 +138,10 @@ void setup() {
   Serial.begin(115200);
   delay(1000);
 
+  // menggunakan led builtin sebagai indicator configuration mode
+  pinMode(LED_BUILTIN, OUTPUT);
+  digitalWrite(LED_BUILTIN, LOW);
+
   Serial.println("Initialize file system...");
   Serial.println("Initialize file system...");
   Serial.println("Initialize file system...");
@@ -145,7 +151,9 @@ void setup() {
 
   fileSystem.begin();
   resetDetector.begin(&fileSystem, onEnterConfigurationMode);
-  network.begin(&fileSystem, NetworkMode::AP, onConnected);
+  network.begin(&fileSystem,
+                isConfigurationModeEnabled ? NetworkMode::AP : NetworkMode::STA,
+                onConnected);
 
   ws2812fx.init();
   strip.Begin();
@@ -190,6 +198,7 @@ void setup() {
 
 unsigned long lastReconnectAttempt = 0;
 unsigned long lastStatsPrint = 0;
+unsigned long previousMillisConfigModeIndicator = 0;
 
 void loop() {
   if (!client.connected()) {
@@ -231,4 +240,12 @@ void loop() {
   WebSerial.loop();
   resetDetector.loop();
   network.loop();
+
+  // indicator configuration mode enabled
+  if ((unsigned long)(millis() - previousMillisConfigModeIndicator) >= 500 &&
+      isConfigurationModeEnabled) {
+    previousMillisConfigModeIndicator = millis();
+    int currentValue = digitalRead(LED_BUILTIN);
+    digitalWrite(LED_BUILTIN, currentValue == HIGH ? LOW : HIGH);
+  }
 }
