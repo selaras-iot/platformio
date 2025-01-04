@@ -11,6 +11,7 @@
 #include <FileSystem.h>
 #include <NeoPixelBus.h>
 #include <PubSubClient.h>
+#include <ResetDetector.h>
 #include <WS2812FX.h>
 #include <WebSerial.h>
 #include <config.h>
@@ -20,6 +21,8 @@ WiFiClient wifiClient;
 PubSubClient client(wifiClient);
 WS2812FX ws2812fx = WS2812FX(44, 3, NEO_GRB + NEO_KHZ800);
 NeoPixelBus strip = NeoPixelBus<NeoGrbFeature, NeoEsp8266Dma800KbpsMethod>(44);
+FileSystem fileSystem;
+ResetDetector resetDetector;
 
 // topics
 String subTopicMode = "", subTopicBrightness = "";
@@ -120,8 +123,22 @@ void initializeTopics() {
   subTopicBrightness = prefix + "brightness";
 }
 
+void onEnterConfigurationMode() {
+  Serial.println("ESP entering configuration mode!!");
+}
+
 void setup() {
   Serial.begin(115200);
+  delay(1000);
+
+  Serial.println("Initialize file system...");
+  Serial.println("Initialize file system...");
+  Serial.println("Initialize file system...");
+  Serial.println("Initialize file system...");
+  Serial.println("Initialize file system...");
+  Serial.println("Initialize file system...");
+  fileSystem.begin();
+  resetDetector.begin(&fileSystem, onEnterConfigurationMode);
 
   ws2812fx.init();
   strip.Begin();
@@ -216,4 +233,5 @@ void loop() {
   }
 
   WebSerial.loop();
+  resetDetector.loop();
 }
