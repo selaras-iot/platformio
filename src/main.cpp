@@ -65,7 +65,7 @@ void setup() {
                 onConnected);
 
   // initialize led strip
-  int ledCount = 10;
+  int ledCount = 44;
   int ledPin = 3;
 
   ws2812fx = new WS2812FX(ledCount, ledPin, NEO_GRB + NEO_KHZ800);
