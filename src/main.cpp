@@ -49,6 +49,7 @@ void setup() {
   Serial.begin(115200);
   delay(1000);
 
+  randomSeed(micros());
   ledIndicator.begin();
 
   Serial.println("Initialize file system...");
@@ -59,22 +60,22 @@ void setup() {
   Serial.println("Initialize file system...");
 
   fileSystem.begin();
+
+  // initialize led strip
+  int ledCount = 44;
+  // int ledPin = 3;
+  ws2812fx = new WS2812FX(ledCount, 3, NEO_GRB + NEO_KHZ800);
+  ws2812fx->init();
+
+  neoPixelBus =
+      new NeoPixelBus<NeoGrbFeature, NeoEsp8266Dma800KbpsMethod>(ledCount);
+  neoPixelBus->Begin();
+  neoPixelBus->Show();
+
   resetDetector.begin(&fileSystem, onEnterConfigurationMode);
   network.begin(&fileSystem,
                 isConfigurationModeEnabled ? NetworkMode::AP : NetworkMode::STA,
                 onConnected);
-
-  // initialize led strip
-  int ledCount = 44;
-  int ledPin = 3;
-
-  ws2812fx = new WS2812FX(ledCount, ledPin, NEO_GRB + NEO_KHZ800);
-  neoPixelBus =
-      new NeoPixelBus<NeoGrbFeature, NeoEsp8266Dma800KbpsMethod>(ledCount);
-
-  ws2812fx->init();
-  neoPixelBus->Begin();
-  neoPixelBus->Show();
 
   // initialize custom show
   ws2812fx->setCustomShow([]() {
@@ -93,8 +94,6 @@ void setup() {
   ws2812fx->setMode(FX_MODE_STATIC);
   ws2812fx->start();
 
-  randomSeed(micros());
-
   // Serve a simple webpage
   server.on("/", HTTP_GET, [](AsyncWebServerRequest* request) {
     request->send(200, "text/plain",
@@ -106,9 +105,6 @@ void setup() {
   WebSerial.begin(&server);
 
   server.begin();
-
-  WebSerial.println("Connecting to MQTT broker...");
-
   mqtt.begin(mqttCallback);
 }
 
