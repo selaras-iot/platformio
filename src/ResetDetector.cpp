@@ -20,7 +20,7 @@ void ResetDetector::begin(FileSystem* fileSystem, void (*callback)()) {
 void ResetDetector::loop() {
   unsigned long currentMillis = millis();
 
-  if (currentMillis >= 3000 && !ResetDetector::isTimeout) {
+  if (currentMillis >= 10000 && !ResetDetector::isTimeout) {
     ResetDetector::isTimeout = true;
     ResetDetector::saveCounter(1);
   }
