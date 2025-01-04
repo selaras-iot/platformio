@@ -41,6 +41,7 @@
 #include <ESPAsyncWebServer.h>
 #include <NeoPixelBus.h>
 #include <PubSubClient.h>
+#include <SelarasFS.h>
 #include <WS2812FX.h>
 #include <WebSerial.h>
 #include <config.h>
