@@ -10,6 +10,7 @@
 #include <ESPAsyncWebServer.h>
 #include <FileSystem.h>
 #include <NeoPixelBus.h>
+#include <Network.h>
 #include <PubSubClient.h>
 #include <ResetDetector.h>
 #include <WS2812FX.h>
@@ -127,6 +128,10 @@ void onEnterConfigurationMode() {
   Serial.println("ESP entering configuration mode!!");
 }
 
+Network network;
+
+void onConnected() { Serial.println("Network connected!"); }
+
 void setup() {
   Serial.begin(115200);
   delay(1000);
@@ -137,8 +142,10 @@ void setup() {
   Serial.println("Initialize file system...");
   Serial.println("Initialize file system...");
   Serial.println("Initialize file system...");
+
   fileSystem.begin();
   resetDetector.begin(&fileSystem, onEnterConfigurationMode);
+  network.begin(&fileSystem, NetworkMode::AP, onConnected);
 
   ws2812fx.init();
   strip.Begin();
@@ -151,18 +158,7 @@ void setup() {
   // const uint32_t colors[] = {RED, BLACK, BLACK};
   // ws2812fx.setSegment(0, 0, 44 - 1, FX_MODE_COMET, colors, 2000, NO_OPTIONS);
 
-  // connect to wifi
-  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-  Serial.println("Connecting to WiFi...");
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
-    Serial.print(".");
-  }
-
   randomSeed(micros());
-
-  Serial.println("\nWiFi connected!");
-  Serial.printf("IP address: %s\n", WiFi.localIP().toString().c_str());
 
   // Serve a simple webpage
   server.on("/", HTTP_GET, [](AsyncWebServerRequest* request) {
@@ -234,4 +230,5 @@ void loop() {
 
   WebSerial.loop();
   resetDetector.loop();
+  network.loop();
 }
