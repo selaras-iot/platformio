@@ -9,6 +9,7 @@
 #include <Arduino.h>
 #include <ESPAsyncWebServer.h>
 #include <FileSystem.h>
+#include <LEDIndicator.h>
 #include <NeoPixelBus.h>
 #include <Network.h>
 #include <PubSubClient.h>
@@ -24,6 +25,8 @@ WS2812FX ws2812fx = WS2812FX(44, 3, NEO_GRB + NEO_KHZ800);
 NeoPixelBus strip = NeoPixelBus<NeoGrbFeature, NeoEsp8266Dma800KbpsMethod>(44);
 FileSystem fileSystem;
 ResetDetector resetDetector;
+Network network;
+LEDIndicator ledIndicator;
 
 // topics
 String subTopicMode = "", subTopicBrightness = "";
@@ -128,9 +131,9 @@ boolean isConfigurationModeEnabled = false;
 void onEnterConfigurationMode() {
   Serial.println("ESP entering configuration mode!!");
   isConfigurationModeEnabled = true;
-}
 
-Network network;
+  ledIndicator.turnOn(250);
+}
 
 void onConnected() { Serial.println("Network connected!"); }
 
@@ -138,9 +141,7 @@ void setup() {
   Serial.begin(115200);
   delay(1000);
 
-  // menggunakan led builtin sebagai indicator configuration mode
-  pinMode(LED_BUILTIN, OUTPUT);
-  digitalWrite(LED_BUILTIN, LOW);
+  ledIndicator.begin();
 
   Serial.println("Initialize file system...");
   Serial.println("Initialize file system...");
@@ -201,20 +202,29 @@ unsigned long lastStatsPrint = 0;
 unsigned long previousMillisConfigModeIndicator = 0;
 
 void loop() {
-  if (!client.connected()) {
-    unsigned long currentMillis = millis();
-    if (currentMillis - lastReconnectAttempt > 5000) {
-      lastReconnectAttempt = currentMillis;
-      if (reconnect())
-        lastReconnectAttempt = 0;
-      else {
-        WebSerial.print("failed, rc=");
-        WebSerial.print(client.state());
-        WebSerial.println(" try again in 5 seconds");
+  if (!isConfigurationModeEnabled) {
+    // hanya dieksekusi ketika di mode normal
+    if (!client.connected()) {
+      unsigned long currentMillis = millis();
+      if (currentMillis - lastReconnectAttempt > 5000) {
+        lastReconnectAttempt = currentMillis;
+        if (reconnect()) {
+          lastReconnectAttempt = 0;
+          ledIndicator.turnOn(1000);
+        } else {
+          WebSerial.print("failed, rc=");
+          WebSerial.print(client.state());
+          WebSerial.println(" try again in 5 seconds");
+          ledIndicator.turnOff();
+        }
       }
+    } else {
+      client.loop();
     }
-  } else
-    client.loop();
+
+    ws2812fx.service();
+    resetDetector.loop();
+  }
 
   // unsigned long now = millis();
   // if (now - lastMsg > 2000) {
@@ -226,8 +236,6 @@ void loop() {
   //   client.publish("rdaOutTopic", msg);
   // }
 
-  ws2812fx.service();
-
   // Print every 2 seconds (non-blocking)
   if ((unsigned long)(millis() - lastStatsPrint) > 2000) {
     WebSerial.print(F("IP address: "));
@@ -238,14 +246,6 @@ void loop() {
   }
 
   WebSerial.loop();
-  resetDetector.loop();
   network.loop();
-
-  // indicator configuration mode enabled
-  if ((unsigned long)(millis() - previousMillisConfigModeIndicator) >= 500 &&
-      isConfigurationModeEnabled) {
-    previousMillisConfigModeIndicator = millis();
-    int currentValue = digitalRead(LED_BUILTIN);
-    digitalWrite(LED_BUILTIN, currentValue == HIGH ? LOW : HIGH);
-  }
+  ledIndicator.loop();
 }
