@@ -38,13 +38,6 @@ void onEnterConfigurationMode() {
 
 void onConnected() { Serial.println("Network connected!"); }
 
-void mqttCallback(boolean isConnected) {
-  if (isConnected)
-    ledIndicator.turnOn(1000);
-  else
-    ledIndicator.turnOff();
-}
-
 void setup() {
   Serial.begin(115200);
   delay(1000);
@@ -105,7 +98,16 @@ void setup() {
   WebSerial.begin(&server);
 
   server.begin();
-  mqtt.begin(mqttCallback);
+  mqtt.begin(
+      [](boolean isConnected) {
+        if (isConnected)
+          ledIndicator.turnOn(1000);
+        else
+          ledIndicator.turnOff();
+      },
+      [](MQTT_TOPIC topic, String payload) {
+        Serial.printf("MQTT message received: %s\n", payload.c_str());
+      });
 }
 
 // int value = 0;

@@ -16,21 +16,28 @@ boolean MQTT::reconnect() {
   return MQTT::client.connected();
 }
 
-void MQTT::begin(void (*callback)(boolean isConnected)) {
-  MQTT::callback = callback;
+void MQTT::begin(void (*onConnectionChanged)(boolean isConnected),
+                 void (*onMessageReceived)(MQTT_TOPIC topic, String payload)) {
+  MQTT::onConnectionChanged = onConnectionChanged;
 
   MQTT::client.setServer(MQTT_BROKER, 1883);
-  MQTT::client.setCallback([](char* topic, byte* payload, unsigned int length) {
-    String strTopic = String(topic);
-    String strPayload = "";
+  MQTT::client.setCallback(
+      [onMessageReceived](char* topic, byte* payload, unsigned int length) {
+        String strTopic = String(topic);
+        String strPayload = "";
 
-    for (unsigned int a = 0; a < length; a++) {
-      strPayload += (char)payload[a];
-    }
+        for (unsigned int a = 0; a < length; a++) {
+          strPayload += (char)payload[a];
+        }
 
-    Serial.printf("Message arrived [%s] %s\n", strTopic.c_str(),
-                  strPayload.c_str());
-  });
+        Serial.printf("Message arrived [%s] %s\n", strTopic.c_str(),
+                      strPayload.c_str());
+
+        if (strTopic.endsWith("mode"))
+          onMessageReceived(MQTT_TOPIC::MODE, strPayload);
+        else if (strTopic.endsWith("brightness"))
+          onMessageReceived(MQTT_TOPIC::BRIGHTNESS, strPayload);
+      });
 }
 
 void MQTT::loop() {
@@ -40,13 +47,13 @@ void MQTT::loop() {
       MQTT::lastReconnectAttempt = currentMillis;
       if (reconnect()) {
         MQTT::lastReconnectAttempt = 0;
-        MQTT::callback(true);
+        MQTT::onConnectionChanged(true);
         Serial.println("Connected to broker!");
       } else {
         Serial.print("failed, rc=");
         Serial.print(client.state());
         Serial.println(" try again in 5 seconds");
-        MQTT::callback(false);
+        MQTT::onConnectionChanged(false);
       }
     }
   } else {

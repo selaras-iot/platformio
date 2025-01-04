@@ -6,10 +6,18 @@
 #include <PubSubClient.h>
 #include <config.h>
 
+enum class MQTT_TOPIC {
+  MODE,
+  BRIGHTNESS,
+  SPEED,
+  COLOR,
+};
+
 class MQTT {
  private:
   unsigned long lastReconnectAttempt = 0;
-  void (*callback)(boolean isConnected);
+  void (*onConnectionChanged)(boolean isConnected);
+  void (*onMessageReceived)(MQTT_TOPIC topic, String payload);
 
   WiFiClient wifiClient;
   PubSubClient client = PubSubClient(wifiClient);
@@ -17,7 +25,8 @@ class MQTT {
   boolean reconnect();
 
  public:
-  void begin(void (*callback)(boolean isConnected));
+  void begin(void (*onConnectionChanged)(boolean isConnected),
+             void (*onMessageReceived)(MQTT_TOPIC topic, String payload));
   void loop();
 };
 
