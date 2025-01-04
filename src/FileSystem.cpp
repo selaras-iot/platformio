@@ -1,6 +1,9 @@
 #include <FileSystem.h>
 
-void FileSystem::begin() { FileSystem::isMounted = LittleFS.begin(); }
+void FileSystem::begin() {
+  FileSystem::isMounted = LittleFS.begin();
+  if (!FileSystem::isMounted) Serial.println("Failed to mount file system");
+}
 
 boolean FileSystem::write(String key, String value) {
   if (FileSystem::isMounted) {
