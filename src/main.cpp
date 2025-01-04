@@ -8,9 +8,9 @@
 
 #include <Arduino.h>
 #include <ESPAsyncWebServer.h>
+#include <FileSystem.h>
 #include <NeoPixelBus.h>
 #include <PubSubClient.h>
-#include <SelarasFS.h>
 #include <WS2812FX.h>
 #include <WebSerial.h>
 #include <config.h>
@@ -19,7 +19,7 @@ AsyncWebServer server(80);
 WiFiClient wifiClient;
 PubSubClient client(wifiClient);
 WS2812FX ws2812fx = WS2812FX(44, 3, NEO_GRB + NEO_KHZ800);
-NeoPixelBus<NeoGrbFeature, NeoEsp8266Dma800KbpsMethod> strip(44);
+NeoPixelBus strip = NeoPixelBus<NeoGrbFeature, NeoEsp8266Dma800KbpsMethod>(44);
 
 // topics
 String subTopicMode = "", subTopicBrightness = "";

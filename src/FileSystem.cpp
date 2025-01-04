@@ -1,9 +1,9 @@
-#include <SelarasFS.h>
+#include <FileSystem.h>
 
-void SelarasFS::begin() { SelarasFS::isMounted = LittleFS.begin(); }
+void FileSystem::begin() { FileSystem::isMounted = LittleFS.begin(); }
 
-boolean SelarasFS::write(String key, String value) {
-  if (SelarasFS::isMounted) {
+boolean FileSystem::write(String key, String value) {
+  if (FileSystem::isMounted) {
     File file = LittleFS.open(key, "w");
     if (!file) return false;
 
@@ -16,8 +16,8 @@ boolean SelarasFS::write(String key, String value) {
   return false;
 }
 
-String SelarasFS::read(String key, String defaultValue) {
-  if (SelarasFS::isMounted) {
+String FileSystem::read(String key, String defaultValue) {
+  if (FileSystem::isMounted) {
     File file = LittleFS.open(key, "r");
     if (!file || (file && file.size() == 0)) return defaultValue;
 

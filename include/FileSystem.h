@@ -1,10 +1,10 @@
-#ifndef SelarasFS_h
-#define SelarasFS_h
+#ifndef FileSystem_h
+#define FileSystem_h
 
 #include <Arduino.h>
 #include <LittleFS.h>
 
-class SelarasFS {
+class FileSystem {
  private:
   boolean isMounted = false;
 
