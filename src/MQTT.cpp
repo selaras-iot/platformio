@@ -1,30 +1,23 @@
 #include <MQTT.h>
 
-void MQTT::initializeTopics() {
-  String org = "com.rizalanggoro.selaras";
-  String prefix = org + "/" + DEVICE_UUID + "/";
-
-  MQTT::subTopicMode = prefix + "mode";
-  MQTT::subTopicBrightness = prefix + "brightness";
-}
-
 boolean MQTT::reconnect() {
   Serial.print("Attempting MQTT connection...");
-  String clientId = "ESP8266Client-";
+  String clientId = "Selaras-ESP8266Client-";
   clientId += String(random(0xffff), HEX);
   Serial.println(clientId);
 
-  if (client.connect(clientId.c_str())) {
-    client.subscribe(MQTT::subTopicMode.c_str());
-    client.subscribe(MQTT::subTopicBrightness.c_str());
+  if (MQTT::client.connect(clientId.c_str())) {
+    String org = "com.rizalanggoro.selaras";
+    String topic = org + "/" + DEVICE_UUID + "/#";
+
+    MQTT::client.subscribe(topic.c_str());
   }
 
-  return client.connected();
+  return MQTT::client.connected();
 }
 
 void MQTT::begin(void (*callback)(boolean isConnected)) {
   MQTT::callback = callback;
-  MQTT::initializeTopics();
 
   MQTT::client.setServer(MQTT_BROKER, 1883);
   MQTT::client.setCallback([](char* topic, byte* payload, unsigned int length) {
@@ -48,6 +41,7 @@ void MQTT::loop() {
       if (reconnect()) {
         MQTT::lastReconnectAttempt = 0;
         MQTT::callback(true);
+        Serial.println("Connected to broker!");
       } else {
         Serial.print("failed, rc=");
         Serial.print(client.state());

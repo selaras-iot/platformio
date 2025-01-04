@@ -8,16 +8,13 @@
 
 class MQTT {
  private:
-  String subTopicMode = "", subTopicBrightness = "";
   unsigned long lastReconnectAttempt = 0;
+  void (*callback)(boolean isConnected);
 
   WiFiClient wifiClient;
   PubSubClient client = PubSubClient(wifiClient);
 
-  void initializeTopics();
   boolean reconnect();
-
-  void (*callback)(boolean isConnected);
 
  public:
   void begin(void (*callback)(boolean isConnected));
