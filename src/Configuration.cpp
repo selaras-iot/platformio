@@ -1,7 +1,36 @@
 #include <Configuration.h>
 
-void Configuration::begin(FileSystem *fileSystem) {
+void Configuration::begin(FileSystem* fileSystem) {
   this->fileSystem = fileSystem;
+}
+
+void Configuration::beginServer(AsyncWebServer* server) {
+  // endpoint for getting device id
+  server->on("/uuid", HTTP_GET, [](AsyncWebServerRequest* request) {
+    String output = "{\"uuid\":\"" + String(DEVICE_UUID) + "\"}";
+    request->send(200, "application/json", output);
+  });
+
+  // endpoint for setting device configuration
+  server->on(
+      "/config", HTTP_POST, [](AsyncWebServerRequest* request) {}, NULL,
+      [](AsyncWebServerRequest* request, uint8_t* data, size_t len,
+         size_t index, size_t total) {
+        if (request->url() == "/config") {
+          JsonDocument doc;
+          deserializeJson(doc, data);
+
+          String ssid = doc["ssid"].as<String>();
+          String password = doc["password"].as<String>();
+          int ledCount = doc["led_count"].as<int>();
+
+          Serial.println(ssid);
+          Serial.println(password);
+          Serial.println(ledCount);
+
+          request->send(200, "application/json", "{\"status\":\"ok\"}");
+        }
+      });
 }
 
 boolean Configuration::saveDeviceConfig(DeviceConfig config) {

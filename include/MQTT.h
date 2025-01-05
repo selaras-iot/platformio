@@ -2,9 +2,9 @@
 #define MQTT_h
 
 #include <Arduino.h>
+#include <Config.h>
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>
-#include <config.h>
 
 enum class MQTT_TOPIC {
   MODE,

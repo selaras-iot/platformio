@@ -7,8 +7,11 @@ void Network::begin(String ssid, String password, NetworkMode networkMode) {
     WiFi.begin(ssid, password);
     WiFi.setAutoReconnect(true);
     WiFi.persistent(true);
-  } else if (networkMode == NetworkMode::AP)
+  } else if (networkMode == NetworkMode::AP) {
     WiFi.softAP("Selaras Smart Device", "");
+    Serial.println("Starting wifi access point...");
+    Serial.printf("IP address: %s\n", WiFi.softAPIP().toString().c_str());
+  }
 }
 
 void Network::loop() {

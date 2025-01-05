@@ -74,6 +74,9 @@ void setup() {
     Serial.println("ESP entering configuration mode!!");
     isConfigurationModeEnabled = true;
     ledIndicator.turnOn(250);
+
+    // setup server endpoint for configuration
+    configuration.beginServer(&server);
   });
 
   if (isDevicedConfigured || isConfigurationModeEnabled) {

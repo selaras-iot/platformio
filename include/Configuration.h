@@ -2,6 +2,10 @@
 #define Configuration_h
 
 #include <Arduino.h>
+#include <ArduinoJson.h>
+#include <AsyncJson.h>
+#include <Config.h>
+#include <ESPAsyncWebServer.h>
 #include <FileSystem.h>
 
 // device config
@@ -38,6 +42,7 @@ class Configuration {
 
  public:
   void begin(FileSystem *fileSystem);
+  void beginServer(AsyncWebServer *server);
   boolean saveDeviceConfig(DeviceConfig config);
   boolean saveLEDConfig(LEDConfig config);
   DeviceConfig readDeviceConfig();
