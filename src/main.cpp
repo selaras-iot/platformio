@@ -98,9 +98,10 @@ void setup() {
     });
 
     // initialize default config for ws2812
-    ws2812fx->setSpeed(1000);
-    ws2812fx->setMode(FX_MODE_STATIC);
-    ws2812fx->setBrightness(100);
+    LEDConfig ledConfig = configuration.readLEDConfig();
+    ws2812fx->setMode(ledConfig.mode);
+    ws2812fx->setBrightness(ledConfig.brightness);
+    ws2812fx->setSpeed(ledConfig.speed);
     ws2812fx->start();
 
     // initialize mqtt
