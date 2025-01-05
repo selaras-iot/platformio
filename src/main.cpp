@@ -75,12 +75,16 @@ void setup() {
     isConfigurationModeEnabled = true;
     ledIndicator.turnOn(250);
   });
-  network.begin(&fileSystem,
-                isConfigurationModeEnabled ? NetworkMode::AP : NetworkMode::STA,
-                []() { Serial.println("Network connected!"); });
 
-  // initialize custom show
+  if (isDevicedConfigured || isConfigurationModeEnabled) {
+    network.begin(
+        &fileSystem,
+        isConfigurationModeEnabled ? NetworkMode::AP : NetworkMode::STA,
+        []() { Serial.println("Network connected!"); });
+  }
+
   if (isDevicedConfigured) {
+    // initialize custom show
     ws2812fx->setCustomShow([]() {
       if (neoPixelBus->CanShow()) {
         // copy the WS2812FX pixel data to the NeoPixelBus instance
@@ -157,6 +161,10 @@ void loop() {
     }
   }
 
+  if (isDevicedConfigured || isConfigurationModeEnabled) {
+    network.loop();
+  }
+
   // unsigned long now = millis();
   // if (now - lastMsg > 2000) {
   //   lastMsg = now;
@@ -177,6 +185,5 @@ void loop() {
   }
 
   WebSerial.loop();
-  network.loop();
   ledIndicator.loop();
 }
