@@ -78,9 +78,8 @@ void setup() {
 
   if (isDevicedConfigured || isConfigurationModeEnabled) {
     network.begin(
-        &fileSystem,
-        isConfigurationModeEnabled ? NetworkMode::AP : NetworkMode::STA,
-        []() { Serial.println("Network connected!"); });
+        deviceConfig.ssid, deviceConfig.password,
+        isConfigurationModeEnabled ? NetworkMode::AP : NetworkMode::STA);
   }
 
   if (isDevicedConfigured) {
