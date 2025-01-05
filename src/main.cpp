@@ -7,6 +7,7 @@
 #endif
 
 #include <Arduino.h>
+#include <Configuration.h>
 #include <ESPAsyncWebServer.h>
 #include <FileSystem.h>
 #include <LEDIndicator.h>
@@ -27,7 +28,9 @@ ResetDetector resetDetector;
 Network network;
 LEDIndicator ledIndicator;
 MQTT mqtt;
+Configuration configuration;
 
+boolean isDevicedConfigured = false;
 boolean isConfigurationModeEnabled = false;
 
 void setup() {
@@ -46,16 +49,26 @@ void setup() {
 
   fileSystem.begin();
 
-  // initialize led strip
-  int ledCount = 44;
-  // int ledPin = 3;
-  ws2812fx = new WS2812FX(ledCount, 3, NEO_GRB + NEO_KHZ800);
-  ws2812fx->init();
+  // read configuration
+  configuration.begin(&fileSystem);
+  auto deviceConfig = configuration.readDeviceConfig();
+  if (deviceConfig.ssid.length() > 0 && deviceConfig.ledCount > 0) {
+    Serial.println("Device already configured!");
+    isDevicedConfigured = true;
+  } else {
+    Serial.println("Device need configuration using http server!");
+  }
 
-  neoPixelBus =
-      new NeoPixelBus<NeoGrbFeature, NeoEsp8266Dma800KbpsMethod>(ledCount);
-  neoPixelBus->Begin();
-  neoPixelBus->Show();
+  // initialize led strip
+  if (isDevicedConfigured) {
+    ws2812fx = new WS2812FX(deviceConfig.ledCount, 3, NEO_GRB + NEO_KHZ800);
+    ws2812fx->init();
+
+    neoPixelBus = new NeoPixelBus<NeoGrbFeature, NeoEsp8266Dma800KbpsMethod>(
+        deviceConfig.ledCount);
+    neoPixelBus->Begin();
+    neoPixelBus->Show();
+  }
 
   resetDetector.begin(&fileSystem, []() {
     Serial.println("ESP entering configuration mode!!");
@@ -67,23 +80,52 @@ void setup() {
                 []() { Serial.println("Network connected!"); });
 
   // initialize custom show
-  ws2812fx->setCustomShow([]() {
-    if (neoPixelBus->CanShow()) {
-      // copy the WS2812FX pixel data to the NeoPixelBus instance
-      memcpy(neoPixelBus->Pixels(), ws2812fx->getPixels(),
-             neoPixelBus->PixelsSize());
-      neoPixelBus->Dirty();
-      neoPixelBus->Show();
-    }
-  });
+  if (isDevicedConfigured) {
+    ws2812fx->setCustomShow([]() {
+      if (neoPixelBus->CanShow()) {
+        // copy the WS2812FX pixel data to the NeoPixelBus instance
+        memcpy(neoPixelBus->Pixels(), ws2812fx->getPixels(),
+               neoPixelBus->PixelsSize());
+        neoPixelBus->Dirty();
+        neoPixelBus->Show();
+      }
+    });
 
-  // initialize default config for ws2812
-  ws2812fx->setSpeed(1000);
-  ws2812fx->setMode(FX_MODE_STATIC);
-  ws2812fx->setBrightness(100);
-  ws2812fx->start();
+    // initialize default config for ws2812
+    ws2812fx->setSpeed(1000);
+    ws2812fx->setMode(FX_MODE_STATIC);
+    ws2812fx->setBrightness(100);
+    ws2812fx->start();
 
-  // Serve a simple webpage
+    // initialize mqtt
+    mqtt.begin(
+        [](boolean isConnected) {
+          if (isConnected)
+            ledIndicator.turnOn(1000);
+          else
+            ledIndicator.turnOff();
+        },
+        [](MQTT_TOPIC topic, String payload) {
+          if (topic == MQTT_TOPIC::MODE) {
+            int newMode = payload.toInt();
+            if (ws2812fx->getMode() != newMode) {
+              ws2812fx->setMode(newMode);
+            }
+          } else if (topic == MQTT_TOPIC::BRIGHTNESS) {
+            int newBrightness = payload.toInt() + 1;
+            if (ws2812fx->getBrightness() != newBrightness) {
+              ws2812fx->setBrightness(newBrightness);
+            }
+          } else if (topic == MQTT_TOPIC::SPEED) {
+            int newSpeed = payload.toInt();
+            if (ws2812fx->getSpeed() != newSpeed) {
+              ws2812fx->setSpeed(newSpeed);
+            }
+          }
+        });
+  }
+
+  // initialize web server, with/without device configured
   server.on("/", HTTP_GET, [](AsyncWebServerRequest* request) {
     request->send(200, "text/plain",
                   "Hi! This is WebSerial demo. You can access the WebSerial "
@@ -92,33 +134,7 @@ void setup() {
   });
 
   WebSerial.begin(&server);
-
   server.begin();
-  mqtt.begin(
-      [](boolean isConnected) {
-        if (isConnected)
-          ledIndicator.turnOn(1000);
-        else
-          ledIndicator.turnOff();
-      },
-      [](MQTT_TOPIC topic, String payload) {
-        if (topic == MQTT_TOPIC::MODE) {
-          int newMode = payload.toInt();
-          if (ws2812fx->getMode() != newMode) {
-            ws2812fx->setMode(newMode);
-          }
-        } else if (topic == MQTT_TOPIC::BRIGHTNESS) {
-          int newBrightness = payload.toInt() + 1;
-          if (ws2812fx->getBrightness() != newBrightness) {
-            ws2812fx->setBrightness(newBrightness);
-          }
-        } else if (topic == MQTT_TOPIC::SPEED) {
-          int newSpeed = payload.toInt();
-          if (ws2812fx->getSpeed() != newSpeed) {
-            ws2812fx->setSpeed(newSpeed);
-          }
-        }
-      });
 }
 
 // int value = 0;
@@ -134,8 +150,11 @@ void loop() {
   if (!isConfigurationModeEnabled) {
     // only executed on normal mode
     resetDetector.loop();
-    mqtt.loop();
-    ws2812fx->service();
+
+    if (isDevicedConfigured) {
+      mqtt.loop();
+      ws2812fx->service();
+    }
   }
 
   // unsigned long now = millis();
