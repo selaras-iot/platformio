@@ -1,0 +1,15 @@
+#ifndef Config_h
+#define Config_h
+
+// rename the Config.example file to Config.h so that the code can be compiled
+// and can be uploaded to the iot device.
+
+// use a public mqtt broker to experiment. for example is hivemq
+// (broker.hivemq.io) or emqx (broker.emqx.io). make sure the broker between iot
+// and mobile devices is the same.
+#define MQTT_BROKER "mqtt.broker"
+
+// generate uuid v4 by following this link: https://www.uuidgenerator.net/
+#define DEVICE_UUID "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+
+#endif
