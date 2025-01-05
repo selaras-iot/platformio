@@ -14,8 +14,8 @@ void Configuration::beginServer(AsyncWebServer* server) {
   // endpoint for setting device configuration
   server->on(
       "/config", HTTP_POST, [](AsyncWebServerRequest* request) {}, NULL,
-      [](AsyncWebServerRequest* request, uint8_t* data, size_t len,
-         size_t index, size_t total) {
+      [this](AsyncWebServerRequest* request, uint8_t* data, size_t len,
+             size_t index, size_t total) {
         if (request->url() == "/config") {
           JsonDocument doc;
           deserializeJson(doc, data);
@@ -24,13 +24,31 @@ void Configuration::beginServer(AsyncWebServer* server) {
           String password = doc["password"].as<String>();
           int ledCount = doc["led_count"].as<int>();
 
-          Serial.println(ssid);
-          Serial.println(password);
-          Serial.println(ledCount);
+          // save config to file system
+          DeviceConfig config;
+          config.ssid = ssid;
+          config.password = password;
+          config.ledCount = ledCount;
+          this->saveDeviceConfig(config);
 
           request->send(200, "application/json", "{\"status\":\"ok\"}");
         }
       });
+
+  // endpoint for getting device configuration
+  server->on("/config", HTTP_GET, [this](AsyncWebServerRequest* request) {
+    DeviceConfig config = this->readDeviceConfig();
+
+    String output;
+    JsonDocument doc;
+
+    doc["ssid"] = config.ssid;
+    doc["password"] = config.password;
+    doc["led_count"] = config.ledCount;
+
+    serializeJson(doc, output);
+    request->send(200, "application/json", output);
+  });
 }
 
 boolean Configuration::saveDeviceConfig(DeviceConfig config) {
