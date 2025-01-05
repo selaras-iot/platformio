@@ -108,8 +108,8 @@ LEDConfig Configuration::readLEDConfig() {
       this->fileSystem->read(CONFIG_AUTO_MODE_PATH, "false") == "true";
   config.mode = this->fileSystem->read(CONFIG_MODE_PATH, "0").toInt();
   config.brightness =
-      this->fileSystem->read(CONFIG_BRIGHTNESS_PATH, "0").toInt();
-  config.speed = this->fileSystem->read(CONFIG_SPEED_PATH, "0").toInt();
+      this->fileSystem->read(CONFIG_BRIGHTNESS_PATH, "100").toInt();
+  config.speed = this->fileSystem->read(CONFIG_SPEED_PATH, "1000").toInt();
 
   return config;
 }

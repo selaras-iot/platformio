@@ -23,5 +23,6 @@ void ResetDetector::loop() {
   if (currentMillis >= 10000 && !ResetDetector::isTimeout) {
     ResetDetector::isTimeout = true;
     ResetDetector::saveCounter(1);
+    Serial.println("Reset counter timeout, reset counter to 1");
   }
 }
