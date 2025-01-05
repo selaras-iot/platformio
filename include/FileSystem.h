@@ -12,6 +12,7 @@ class FileSystem {
   void begin();
   boolean write(String key, String value);
   String read(String key, String defaultValue);
+  boolean format();
 };
 
 #endif

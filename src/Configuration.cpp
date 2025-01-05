@@ -50,11 +50,22 @@ void Configuration::beginServer(AsyncWebServer* server) {
     request->send(200, "application/json", output);
   });
 
-  // endpoint for restart device
+  // endpoint for restarting device
   server->on("/restart", HTTP_GET, [](AsyncWebServerRequest* request) {
     request->send(200, "application/json", "{\"status\":\"ok\"}");
     delay(1000);
     ESP.restart();
+  });
+
+  // endpoint for resetting device
+  server->on("/reset", HTTP_GET, [this](AsyncWebServerRequest* request) {
+    if (this->fileSystem->format()) {
+      request->send(200, "application/json", "{\"status\":\"ok\"}");
+      delay(1000);
+      ESP.reset();
+    } else {
+      request->send(500, "application/json", "{\"status\":\"error\"}");
+    }
   });
 }
 

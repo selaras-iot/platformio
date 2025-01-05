@@ -32,3 +32,8 @@ String FileSystem::read(String key, String defaultValue) {
 
   return defaultValue;
 }
+
+boolean FileSystem::format() {
+  if (this->isMounted) return LittleFS.format();
+  return false;
+}
