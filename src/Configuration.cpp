@@ -49,6 +49,13 @@ void Configuration::beginServer(AsyncWebServer* server) {
     serializeJson(doc, output);
     request->send(200, "application/json", output);
   });
+
+  // endpoint for restart device
+  server->on("/restart", HTTP_GET, [](AsyncWebServerRequest* request) {
+    request->send(200, "application/json", "{\"status\":\"ok\"}");
+    delay(1000);
+    ESP.restart();
+  });
 }
 
 boolean Configuration::saveDeviceConfig(DeviceConfig config) {
